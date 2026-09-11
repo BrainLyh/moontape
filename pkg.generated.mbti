@@ -1,0 +1,76 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "BrainLyh/moontape"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn explain_match(HarArchive, MatchResult) -> String
+
+pub fn inspect_text(HarArchive) -> String
+
+pub fn match_request(HarArchive, String, String, body? : String) -> MatchResult
+
+pub fn parse_har(StringView) -> HarArchive raise
+
+pub fn path_without_query(String) -> String
+
+pub fn sanitize_har(HarArchive) -> (Json, RedactionReport)
+
+pub fn url_path(String) -> String
+
+// Errors
+pub(all) suberror HarError {
+  InvalidHar(String)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) struct HarArchive {
+  version : String
+  creator : String
+  entries : Array[HarEntry]
+  raw : Json
+} derive(Eq, @debug.Debug)
+
+pub(all) struct HarEntry {
+  request : HarRequest
+  response : HarResponse
+  time_ms : Double
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct HarRequest {
+  meth : String
+  url : String
+  path : String
+  headers : Array[Header]
+  body : String?
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct HarResponse {
+  status : Int
+  status_text : String
+  headers : Array[Header]
+  mime_type : String
+  body : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct Header {
+  name : String
+  value : String
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) enum MatchResult {
+  Exact(Int)
+  BodyMismatch(Int)
+  MethodMismatch(Int)
+  PathMismatch
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct RedactionReport {
+  redacted_values : Int
+} derive(Eq, ToJson, @debug.Debug)
+
+// Type aliases
+
+// Traits
