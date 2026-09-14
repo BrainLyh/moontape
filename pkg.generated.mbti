@@ -53,6 +53,7 @@ pub(all) struct HarResponse {
   headers : Array[Header]
   mime_type : String
   body : String
+  encoding : String?
 } derive(Eq, ToJson, @debug.Debug)
 
 pub(all) struct Header {

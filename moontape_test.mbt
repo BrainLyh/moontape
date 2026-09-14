@@ -59,3 +59,39 @@ test "match ignores query but explains body mismatch" {
     BodyMismatch(0),
   )
 }
+
+///|
+test "URL path handles authority-only query strings" {
+  assert_eq(url_path("https://example.test"), "/")
+  assert_eq(url_path("https://example.test?debug=1"), "/?debug=1")
+  assert_eq(url_path("https://example.test/a?debug=1"), "/a?debug=1")
+}
+
+///|
+test "reject invalid HTTP status codes" {
+  let invalid =
+    #|{"log":{"version":"1.2","entries":[{
+    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
+    #|  "response":{"status":99,"headers":[],"content":{}}
+    #|}]}}
+  let rejected = try {
+    ignore(parse_har(invalid))
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
+}
+
+///|
+test "preserve HAR content encoding metadata" {
+  let encoded =
+    #|{"log":{"version":"1.2","entries":[{
+    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
+    #|  "response":{"status":200,"headers":[],"content":{
+    #|    "mimeType":"image/png","text":"AA==","encoding":"base64"
+    #|  }}
+    #|}]}}
+  let archive = parse_har(encoded)
+  assert_eq(archive.entries[0].response.encoding, Some("base64"))
+}

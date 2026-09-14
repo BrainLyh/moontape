@@ -25,6 +25,7 @@ pub(all) struct HarResponse {
   headers : Array[Header]
   mime_type : String
   body : String
+  encoding : String?
 } derive(Eq, Debug, ToJson)
 
 ///|
@@ -127,10 +128,16 @@ pub fn url_path(url : String) -> String {
     Some((_, value)) => value
     None => url[:]
   }
-  if rest.find("/") is Some(index) {
-    rest[index:].to_owned()
-  } else {
-    "/"
+  match (rest.find("/"), rest.find("?")) {
+    (Some(slash), Some(query)) =>
+      if slash < query {
+        rest[slash:].to_owned()
+      } else {
+        "/" + rest[query:].to_owned()
+      }
+    (Some(slash), None) => rest[slash:].to_owned()
+    (None, Some(query)) => "/" + rest[query:].to_owned()
+    (None, None) => "/"
   }
 }
 
@@ -177,24 +184,35 @@ fn parse_response(value : Json, context : String) -> HarResponse raise HarError 
   guard required_field(object, "status", context) is Number(status, ..) else {
     raise InvalidHar("\{context}.status must be a number")
   }
+  let status_code = status.to_int()
+  guard status == status_code.to_double() &&
+    status_code >= 100 &&
+    status_code <= 599 else {
+    raise InvalidHar("\{context}.status must be an integer between 100 and 599")
+  }
   let headers = match object.get("headers") {
     Some(value) => parse_headers(value, "\{context}.headers")
     None => []
   }
-  let (mime_type, body) = match object.get("content") {
+  let (mime_type, body, encoding) = match object.get("content") {
     Some(Object(content)) =>
       (
         optional_string(content, "mimeType", "application/octet-stream"),
         optional_string(content, "text", ""),
+        match content.get("encoding") {
+          Some(String(value)) => Some(value)
+          _ => None
+        },
       )
-    _ => ("application/octet-stream", "")
+    _ => ("application/octet-stream", "", None)
   }
   {
-    status: status.to_int(),
+    status: status_code,
     status_text: optional_string(object, "statusText", ""),
     headers,
     mime_type,
     body,
+    encoding,
   }
 }
 
