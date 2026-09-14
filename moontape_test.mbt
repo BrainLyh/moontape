@@ -43,6 +43,17 @@ test "sanitize headers and nested JSON keys" {
   assert_true(report.findings[1].path.contains("text<json>"))
   assert_true(text.contains("[REDACTED]"))
   assert_false(text.contains("Bearer secret"))
+  assert_false(report.is_clean())
+}
+
+///|
+test "privacy report identifies a clean archive" {
+  let clean =
+    #|{"log":{"version":"1.2","entries":[{
+    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
+    #|  "response":{"status":200,"headers":[],"content":{"text":"ok"}}
+    #|}]}}
+  assert_true(scan_har(parse_har(clean)).is_clean())
 }
 
 ///|

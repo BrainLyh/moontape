@@ -6,6 +6,7 @@ fn usage() -> String {
     #|Usage:
     #|  moontape inspect <file.har>
     #|  moontape scan <file.har> [--redact name,name]
+    #|  moontape check <file.har> [--redact name,name]
     #|  moontape sanitize <input.har> -o <output.har> [--redact name,name]
     #|  moontape serve <file.har> [--port 8080] [--strict]
     #|  moontape help
@@ -143,6 +144,29 @@ async fn run(args : Array[String]) -> Unit {
       )
       println(@json.to_json(report).stringify(indent=2))
     }
+    [_, "check", path] => {
+      let report = @moontape.scan_har(read_archive(path))
+      guard report.is_clean() else {
+        println(@json.to_json(report).stringify(indent=2))
+        raise Failure(
+          "privacy check failed: found \{report.redacted_values} sensitive values",
+        )
+      }
+      println("Privacy check passed: no sensitive values found.")
+    }
+    [_, "check", path, "--redact", names] => {
+      let report = @moontape.scan_har_with_policy(
+        read_archive(path),
+        extra_redaction_policy(names),
+      )
+      guard report.is_clean() else {
+        println(@json.to_json(report).stringify(indent=2))
+        raise Failure(
+          "privacy check failed: found \{report.redacted_values} sensitive values",
+        )
+      }
+      println("Privacy check passed: no sensitive values found.")
+    }
     [_, "sanitize", input, "-o", output]
     | [_, "sanitize", input, "--output", output] => {
       let archive = read_archive(input)
@@ -196,7 +220,5 @@ async fn run(args : Array[String]) -> Unit {
 
 ///|
 async fn main {
-  run(@env.args()) catch {
-    error => println("error: \{error}")
-  }
+  run(@env.args())
 }

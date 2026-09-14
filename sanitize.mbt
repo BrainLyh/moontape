@@ -11,6 +11,11 @@ pub(all) struct RedactionReport {
 } derive(Eq, Debug, ToJson)
 
 ///|
+pub fn RedactionReport::is_clean(self : RedactionReport) -> Bool {
+  self.redacted_values == 0
+}
+
+///|
 pub(all) struct RedactionPolicy {
   sensitive_names : Array[String]
   replacement : String

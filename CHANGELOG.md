@@ -11,11 +11,13 @@ All notable changes to MoonTape are documented here.
 - Privacy scan reports containing finding names and JSON paths.
 - Recursive sanitization of plain and Base64-encoded JSON response bodies.
 - Extensible redaction policies and the CLI --redact option.
+- A `check` command that turns the privacy scanner into a CI gate.
+- Failing process statuses for invalid commands and operational errors.
 - Strict canonical-query matching and semantic JSON body comparison.
 - Query, method, body, and path mismatch diagnostics.
 
 ### Verified
 
 - Native formatting and type checking.
-- Ten unit tests covering parsing, sanitization, matching, and Base64 content.
+- Eleven unit tests covering parsing, sanitization, matching, and Base64 content.
 - Inspect, scan, sanitize, and local replay smoke tests.

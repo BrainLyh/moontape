@@ -15,6 +15,7 @@ MoonTape is an early, runnable MVP. It currently supports:
 - listing recorded method, URL, status, and timing information;
 - redacting sensitive headers, cookies, and JSON properties;
 - producing machine-readable findings with the exact location of each value;
+- failing CI when a HAR fixture still contains recognized sensitive values;
 - sanitizing plain and base64-encoded JSON stored inside HAR response text;
 - extending the default redaction policy with project-specific field names;
 - matching requests by HTTP method, path, canonical query, and body;
@@ -40,6 +41,7 @@ Install MoonBit with the
 
     moon run cmd/main --target native -- inspect fixtures/sample.har
     moon run cmd/main --target native -- scan fixtures/sample.har
+    moon run cmd/main --target native -- check fixtures/sample.har
     moon run cmd/main --target native -- sanitize fixtures/sample.har -o sample.safe.har
     moon run cmd/main --target native -- serve sample.safe.har --port 8080 --strict
 
@@ -68,6 +70,11 @@ Example output:
 Inspect the same findings without writing a new file:
 
     moon run cmd/main --target native -- scan capture.har
+
+Use `check` as a CI privacy gate. It exits unsuccessfully and prints the same
+machine-readable findings when recognized sensitive values remain:
+
+    moon run cmd/main --target native -- check capture.safe.har
 
 The default policy replaces Authorization, Cookie, Set-Cookie, X-API-Key,
 access_token, refresh_token, token, password, and related values with
