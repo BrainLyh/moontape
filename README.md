@@ -14,13 +14,16 @@ MoonTape is an early, runnable MVP. It currently supports:
 - defensive parsing of the HAR fields needed for replay;
 - listing recorded method, URL, status, and timing information;
 - redacting sensitive headers, cookies, and JSON properties;
-- sanitizing JSON stored inside HAR response text;
-- matching requests by HTTP method and path;
+- producing machine-readable findings with the exact location of each value;
+- sanitizing plain and base64-encoded JSON stored inside HAR response text;
+- extending the default redaction policy with project-specific field names;
+- matching requests by HTTP method, path, canonical query, and body;
+- comparing JSON request bodies semantically;
 - explaining path, method, and body mismatches;
-- serving recorded responses from a native local HTTP server.
+- replaying text and base64-encoded responses from a native local HTTP server.
 
-HTTPS interception, compressed or base64 bodies, configurable policies, and
-strict query matching are not implemented yet.
+HTTPS interception, compressed bodies, header matching, persistent
+configuration files, and traffic recording are not implemented yet.
 
 ## Requirements
 
@@ -36,15 +39,16 @@ Install MoonBit with the
     moon test --target native
 
     moon run cmd/main --target native -- inspect fixtures/sample.har
+    moon run cmd/main --target native -- scan fixtures/sample.har
     moon run cmd/main --target native -- sanitize fixtures/sample.har -o sample.safe.har
-    moon run cmd/main --target native -- serve sample.safe.har --port 8080
+    moon run cmd/main --target native -- serve sample.safe.har --port 8080 --strict
 
 In another terminal:
 
     curl http://127.0.0.1:8080/v1/hello
 
-MoonTape deliberately ignores the query string in this MVP, so the recorded
-/v1/hello?lang=zh request also matches /v1/hello.
+Replay uses loose matching by default, which ignores the query string. Pass
+--strict to compare canonical query strings as well.
 
 ## Commands
 
@@ -61,9 +65,19 @@ Example output:
 
     moon run cmd/main --target native -- sanitize capture.har -o capture.safe.har
 
+Inspect the same findings without writing a new file:
+
+    moon run cmd/main --target native -- scan capture.har
+
 The default policy replaces Authorization, Cookie, Set-Cookie, X-API-Key,
 access_token, refresh_token, token, password, and related values with
 [REDACTED]. HAR header and cookie arrays and JSON response bodies are handled.
+The scan report includes a JSON path and field name for each finding.
+
+Add application-specific names without disabling the safe defaults:
+
+    moon run cmd/main --target native -- scan capture.har --redact tenant_session,user_pin
+    moon run cmd/main --target native -- sanitize capture.har -o capture.safe.har --redact tenant_session,user_pin
 
 Always review the generated file before committing it. Automated secret
 detection can reduce risk but cannot prove that arbitrary captures are safe.
@@ -72,9 +86,15 @@ detection can reduce risk but cannot prove that arbitrary captures are safe.
 
     moon run cmd/main --target native -- serve capture.safe.har --port 8080
 
+Enable canonical query comparison:
+
+    moon run cmd/main --target native -- serve capture.safe.har --port 8080 --strict
+
 Successful responses include X-MoonTape-Match with the one-based recording
 number. A miss returns HTTP 404 and explains whether the nearest recording had
-a different path, method, or body.
+a different path, query, method, or body. JSON bodies are compared
+semantically, so insignificant whitespace and object key order do not cause a
+miss.
 
 ## Architecture
 
@@ -96,6 +116,15 @@ Wasm browser interface.
 
 Keep fixtures synthetic: never commit real access tokens, session cookies, or
 personal data.
+
+## Roadmap
+
+- persistent JSON policy files with custom replacements and ignored paths;
+- request Header matching and dynamic field exclusion;
+- gzip and deflate response bodies;
+- JUnit and JSON verification reports for CI;
+- a Wasm browser interface for local-only inspection and sanitization;
+- optional fault and latency injection.
 
 ## License
 
