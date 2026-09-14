@@ -29,6 +29,32 @@ pub(all) struct HarResponse {
 } derive(Eq, Debug, ToJson)
 
 ///|
+pub fn HarResponse::replay_headers(self : HarResponse) -> Array[Header] {
+  let safe_names = [
+    "cache-control", "content-language", "etag", "expires", "last-modified", "location",
+    "retry-after", "vary", "www-authenticate", "access-control-allow-origin", "access-control-allow-methods",
+    "access-control-allow-headers", "access-control-expose-headers", "access-control-max-age",
+  ]
+  let result : Array[Header] = []
+  let mut has_content_type = false
+  for header in self.headers {
+    let normalized = header.name.to_lower()
+    if normalized == "content-type" {
+      if !has_content_type {
+        result.push(header)
+        has_content_type = true
+      }
+    } else if safe_names.contains(normalized) {
+      result.push(header)
+    }
+  }
+  if !has_content_type {
+    result.push({ name: "Content-Type", value: self.mime_type, })
+  }
+  result
+}
+
+///|
 pub fn HarResponse::body_bytes(self : HarResponse) -> Bytes raise HarError {
   match self.encoding {
     None => @utf8.encode(self.body)

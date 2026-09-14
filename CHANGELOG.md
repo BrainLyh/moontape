@@ -15,9 +15,10 @@ All notable changes to MoonTape are documented here.
 - Failing process statuses for invalid commands and operational errors.
 - Strict canonical-query matching and semantic JSON body comparison.
 - Query, method, body, and path mismatch diagnostics.
+- Safe replay of cache, redirect, language, validator, and CORS headers.
 
 ### Verified
 
 - Native formatting and type checking.
-- Eleven unit tests covering parsing, sanitization, matching, and Base64 content.
+- Twelve unit tests covering parsing, sanitization, matching, headers, and Base64 content.
 - Inspect, scan, sanitize, and local replay smoke tests.

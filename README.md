@@ -22,8 +22,10 @@ MoonTape is an early, runnable MVP. It currently supports:
 - comparing JSON request bodies semantically;
 - explaining path, method, and body mismatches;
 - replaying text and base64-encoded responses from a native local HTTP server.
+- replaying cache, redirect, language, CORS, and validator response headers
+  through an explicit safety allowlist.
 
-HTTPS interception, compressed bodies, header matching, persistent
+HTTPS interception, compressed bodies, request header matching, persistent
 configuration files, and traffic recording are not implemented yet.
 
 ## Requirements
@@ -102,6 +104,12 @@ number. A miss returns HTTP 404 and explains whether the nearest recording had
 a different path, query, method, or body. JSON bodies are compared
 semantically, so insignificant whitespace and object key order do not cause a
 miss.
+
+Replay forwards useful representation and cache metadata such as Content-Type,
+Cache-Control, ETag, Location, and CORS headers. Connection-specific headers,
+Content-Length, Content-Encoding, and Set-Cookie are deliberately omitted:
+MoonTape computes framing itself, decoded HAR bodies may no longer have the
+recorded wire encoding, and replay should not restore captured sessions.
 
 ## Architecture
 

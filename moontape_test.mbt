@@ -111,6 +111,24 @@ test "preserve HAR content encoding metadata" {
 }
 
 ///|
+test "replay response headers through an explicit safety allowlist" {
+  let with_headers =
+    #|{"log":{"version":"1.2","entries":[{
+    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
+    #|  "response":{"status":200,"headers":[
+    #|    {"name":"Content-Type","value":"application/json; charset=utf-8"},
+    #|    {"name":"Cache-Control","value":"max-age=60"},
+    #|    {"name":"Set-Cookie","value":"session=secret"},
+    #|    {"name":"Content-Encoding","value":"gzip"}
+    #|  ],"content":{"mimeType":"application/json","text":"{}"}}
+    #|}]}}
+  let headers = parse_har(with_headers).entries[0].response.replay_headers()
+  assert_eq(headers.length(), 2)
+  assert_eq(headers[0].value, "application/json; charset=utf-8")
+  assert_eq(headers[1].name, "Cache-Control")
+}
+
+///|
 test "strict matching compares canonical query strings" {
   let archive = parse_har(fixture)
   assert_true(

@@ -96,13 +96,14 @@ async fn serve_archive(
     match result {
       Exact(index) => {
         let recorded = archive.entries[index].response
-        let headers : @http.Headers = Map([
-          (@http.CaseInsensitiveString("Content-Type"), recorded.mime_type),
-          (
-            @http.CaseInsensitiveString("X-MoonTape-Match"),
-            (index + 1).to_string(),
-          ),
-        ])
+        let headers : @http.Headers = Map([])
+        for header in recorded.replay_headers() {
+          headers.set(@http.CaseInsensitiveString(header.name), header.value)
+        }
+        headers.set(
+          @http.CaseInsensitiveString("X-MoonTape-Match"),
+          (index + 1).to_string(),
+        )
         connection
         ..send_response(
           recorded.status,
