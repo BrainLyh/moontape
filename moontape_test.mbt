@@ -38,6 +38,9 @@ test "sanitize headers and nested JSON keys" {
   let (clean, report) = sanitize_har(archive)
   let text = clean.stringify()
   assert_eq(report.redacted_values, 2)
+  assert_eq(report.findings.length(), 2)
+  assert_eq(report.findings[0].name, "Authorization")
+  assert_true(report.findings[1].path.contains("text<json>"))
   assert_true(text.contains("[REDACTED]"))
   assert_false(text.contains("Bearer secret"))
 }

@@ -18,6 +18,8 @@ pub fn path_without_query(String) -> String
 
 pub fn sanitize_har(HarArchive) -> (Json, RedactionReport)
 
+pub fn scan_har(HarArchive) -> RedactionReport
+
 pub fn url_path(String) -> String
 
 // Errors
@@ -68,8 +70,14 @@ pub(all) enum MatchResult {
   PathMismatch
 } derive(Eq, ToJson, @debug.Debug)
 
+pub(all) struct RedactionFinding {
+  path : String
+  name : String
+} derive(Eq, ToJson, @debug.Debug)
+
 pub(all) struct RedactionReport {
   redacted_values : Int
+  findings : Array[RedactionFinding]
 } derive(Eq, ToJson, @debug.Debug)
 
 // Type aliases

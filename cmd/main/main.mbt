@@ -5,6 +5,7 @@ fn usage() -> String {
     #|
     #|Usage:
     #|  moontape inspect <file.har>
+    #|  moontape scan <file.har>
     #|  moontape sanitize <input.har> -o <output.har>
     #|  moontape serve <file.har> [--port 8080]
     #|  moontape help
@@ -116,6 +117,10 @@ async fn run(args : Array[String]) -> Unit {
     [_, "inspect", path] => {
       let archive = read_archive(path)
       println(@moontape.inspect_text(archive))
+    }
+    [_, "scan", path] => {
+      let report = @moontape.scan_har(read_archive(path))
+      println(@json.to_json(report).stringify(indent=2))
     }
     [_, "sanitize", input, "-o", output]
     | [_, "sanitize", input, "--output", output] => {
