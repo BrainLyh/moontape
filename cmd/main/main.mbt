@@ -7,7 +7,7 @@ fn usage() -> String {
     #|  moontape inspect <file.har>
     #|  moontape scan <file.har>
     #|  moontape sanitize <input.har> -o <output.har>
-    #|  moontape serve <file.har> [--port 8080]
+    #|  moontape serve <file.har> [--port 8080] [--strict]
     #|  moontape help
   )
 }
@@ -60,7 +60,11 @@ fn reason_phrase(status : Int, recorded : String) -> String {
 }
 
 ///|
-async fn serve_archive(archive : @moontape.HarArchive, port : Int) -> Unit {
+async fn serve_archive(
+  archive : @moontape.HarArchive,
+  port : Int,
+  options : @moontape.MatchOptions,
+) -> Unit {
   let address = @socket.Addr::parse("0.0.0.0:\{port}")
   let server = @http.Server(address)
   println(
@@ -72,11 +76,12 @@ async fn serve_archive(archive : @moontape.HarArchive, port : Int) -> Unit {
     } else {
       None
     }
-    let result = @moontape.match_request(
+    let result = @moontape.match_request_with_options(
       archive,
       request_method_name(request.meth),
       request.path,
       body?,
+      options,
     )
     match result {
       Exact(index) => {
@@ -131,7 +136,10 @@ async fn run(args : Array[String]) -> Unit {
         "Wrote \{output}; redacted \{report.redacted_values} sensitive values.",
       )
     }
-    [_, "serve", path] => serve_archive(read_archive(path), 8080)
+    [_, "serve", path] =>
+      serve_archive(read_archive(path), 8080, @moontape.MatchOptions::loose())
+    [_, "serve", path, "--strict"] =>
+      serve_archive(read_archive(path), 8080, @moontape.MatchOptions::strict())
     [_, "serve", path, "--port", port_text] => {
       let port = @string.parse_int(port_text) catch {
         _ => raise Failure("port must be an integer")
@@ -139,7 +147,16 @@ async fn run(args : Array[String]) -> Unit {
       guard port > 0 && port < 65536 else {
         raise Failure("port must be between 1 and 65535")
       }
-      serve_archive(read_archive(path), port)
+      serve_archive(read_archive(path), port, @moontape.MatchOptions::loose())
+    }
+    [_, "serve", path, "--port", port_text, "--strict"] => {
+      let port = @string.parse_int(port_text) catch {
+        _ => raise Failure("port must be an integer")
+      }
+      guard port > 0 && port < 65536 else {
+        raise Failure("port must be between 1 and 65535")
+      }
+      serve_archive(read_archive(path), port, @moontape.MatchOptions::strict())
     }
     [_, "help"] | [_] => println(usage())
     _ => {

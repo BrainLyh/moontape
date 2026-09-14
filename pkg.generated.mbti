@@ -12,6 +12,8 @@ pub fn inspect_text(HarArchive) -> String
 
 pub fn match_request(HarArchive, String, String, body? : String) -> MatchResult
 
+pub fn match_request_with_options(HarArchive, String, String, body? : String, MatchOptions) -> MatchResult
+
 pub fn parse_har(StringView) -> HarArchive raise
 
 pub fn path_without_query(String) -> String
@@ -63,10 +65,19 @@ pub(all) struct Header {
   value : String
 } derive(Eq, ToJson, @debug.Debug)
 
+pub(all) struct MatchOptions {
+  compare_query : Bool
+  compare_body : Bool
+  semantic_json_body : Bool
+} derive(Eq, ToJson, @debug.Debug)
+pub fn MatchOptions::loose() -> Self
+pub fn MatchOptions::strict() -> Self
+
 pub(all) enum MatchResult {
   Exact(Int)
   BodyMismatch(Int)
   MethodMismatch(Int)
+  QueryMismatch(Int)
   PathMismatch
 } derive(Eq, ToJson, @debug.Debug)
 

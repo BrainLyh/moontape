@@ -98,3 +98,43 @@ test "preserve HAR content encoding metadata" {
   let archive = parse_har(encoded)
   assert_eq(archive.entries[0].response.encoding, Some("base64"))
 }
+
+///|
+test "strict matching compares canonical query strings" {
+  let archive = parse_har(fixture)
+  assert_true(
+    match_request_with_options(
+      archive,
+      "POST",
+      "/v1/orders?trace=1",
+      body="{\"quantity\":2}",
+      MatchOptions::strict(),
+    ) ==
+    Exact(0),
+  )
+  assert_true(
+    match_request_with_options(
+      archive,
+      "POST",
+      "/v1/orders?trace=2",
+      body="{\"quantity\":2}",
+      MatchOptions::strict(),
+    ) ==
+    QueryMismatch(0),
+  )
+}
+
+///|
+test "JSON bodies match semantically" {
+  let archive = parse_har(fixture)
+  assert_true(
+    match_request_with_options(
+      archive,
+      "POST",
+      "/v1/orders?trace=1",
+      body="{ \"quantity\" : 2.0 }",
+      MatchOptions::strict(),
+    ) ==
+    Exact(0),
+  )
+}
