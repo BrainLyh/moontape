@@ -163,3 +163,22 @@ test "decode and sanitize base64 JSON responses" {
     "{\"token\":\"[REDACTED]\"}",
   )
 }
+
+///|
+test "custom redaction policy extends safe defaults" {
+  let custom =
+    #|{"log":{"version":"1.2","entries":[{
+    #|  "request":{"method":"GET","url":"https://example.test","headers":[
+    #|    {"name":"X-Tenant-Session","value":"private"},
+    #|    {"name":"Authorization","value":"Bearer private"}
+    #|  ]},
+    #|  "response":{"status":200,"headers":[],"content":{}}
+    #|}]}}
+  let policy = RedactionPolicy::default()
+    .with_additional(["X-Tenant-Session"])
+    .with_replacement("<hidden>")
+  let (clean, report) = sanitize_har_with_policy(parse_har(custom), policy)
+  assert_eq(report.redacted_values, 2)
+  assert_false(clean.stringify().contains("private"))
+  assert_true(clean.stringify().contains("<hidden>"))
+}

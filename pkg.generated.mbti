@@ -20,7 +20,11 @@ pub fn path_without_query(String) -> String
 
 pub fn sanitize_har(HarArchive) -> (Json, RedactionReport)
 
+pub fn sanitize_har_with_policy(HarArchive, RedactionPolicy) -> (Json, RedactionReport)
+
 pub fn scan_har(HarArchive) -> RedactionReport
+
+pub fn scan_har_with_policy(HarArchive, RedactionPolicy) -> RedactionReport
 
 pub fn url_path(String) -> String
 
@@ -86,6 +90,15 @@ pub(all) struct RedactionFinding {
   path : String
   name : String
 } derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct RedactionPolicy {
+  sensitive_names : Array[String]
+  replacement : String
+} derive(Eq, ToJson, @debug.Debug)
+pub fn RedactionPolicy::default() -> Self
+pub fn RedactionPolicy::is_sensitive(Self, String) -> Bool
+pub fn RedactionPolicy::with_additional(Self, Array[String]) -> Self
+pub fn RedactionPolicy::with_replacement(Self, String) -> Self
 
 pub(all) struct RedactionReport {
   redacted_values : Int

@@ -5,8 +5,8 @@ fn usage() -> String {
     #|
     #|Usage:
     #|  moontape inspect <file.har>
-    #|  moontape scan <file.har>
-    #|  moontape sanitize <input.har> -o <output.har>
+    #|  moontape scan <file.har> [--redact name,name]
+    #|  moontape sanitize <input.har> -o <output.har> [--redact name,name]
     #|  moontape serve <file.har> [--port 8080] [--strict]
     #|  moontape help
   )
@@ -16,6 +16,15 @@ fn usage() -> String {
 async fn read_archive(path : String) -> @moontape.HarArchive {
   let source = @fs.read_file(path).text()
   @moontape.parse_har(source)
+}
+
+///|
+fn extra_redaction_policy(names : String) -> @moontape.RedactionPolicy {
+  let additional : Array[String] = []
+  for name in names.split(",") {
+    additional.push(name.trim().to_owned())
+  }
+  @moontape.RedactionPolicy::default().with_additional(additional)
 }
 
 ///|
@@ -127,10 +136,29 @@ async fn run(args : Array[String]) -> Unit {
       let report = @moontape.scan_har(read_archive(path))
       println(@json.to_json(report).stringify(indent=2))
     }
+    [_, "scan", path, "--redact", names] => {
+      let report = @moontape.scan_har_with_policy(
+        read_archive(path),
+        extra_redaction_policy(names),
+      )
+      println(@json.to_json(report).stringify(indent=2))
+    }
     [_, "sanitize", input, "-o", output]
     | [_, "sanitize", input, "--output", output] => {
       let archive = read_archive(input)
       let (clean, report) = @moontape.sanitize_har(archive)
+      @fs.write_file(output, clean.stringify(indent=2) + "\n")
+      println(
+        "Wrote \{output}; redacted \{report.redacted_values} sensitive values.",
+      )
+    }
+    [_, "sanitize", input, "-o", output, "--redact", names]
+    | [_, "sanitize", input, "--output", output, "--redact", names] => {
+      let archive = read_archive(input)
+      let (clean, report) = @moontape.sanitize_har_with_policy(
+        archive,
+        extra_redaction_policy(names),
+      )
       @fs.write_file(output, clean.stringify(indent=2) + "\n")
       println(
         "Wrote \{output}; redacted \{report.redacted_values} sensitive values.",
