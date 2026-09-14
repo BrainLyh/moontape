@@ -138,3 +138,28 @@ test "JSON bodies match semantically" {
     Exact(0),
   )
 }
+
+///|
+test "decode and sanitize base64 JSON responses" {
+  let encoded =
+    #|{"log":{"version":"1.2","entries":[{
+    #|  "request":{"method":"GET","url":"https://example.test/data","headers":[]},
+    #|  "response":{"status":200,"headers":[],"content":{
+    #|    "mimeType":"application/json",
+    #|    "text":"eyJ0b2tlbiI6InNlY3JldCJ9",
+    #|    "encoding":"base64"
+    #|  }}
+    #|}]}}
+  let archive = parse_har(encoded)
+  assert_eq(
+    @utf8.decode(archive.entries[0].response.body_bytes()),
+    "{\"token\":\"secret\"}",
+  )
+  let (clean, report) = sanitize_har(archive)
+  assert_eq(report.redacted_values, 1)
+  let clean_archive = parse_har(clean.stringify())
+  assert_eq(
+    @utf8.decode(clean_archive.entries[0].response.body_bytes()),
+    "{\"token\":\"[REDACTED]\"}",
+  )
+}

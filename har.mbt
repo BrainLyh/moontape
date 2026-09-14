@@ -29,6 +29,19 @@ pub(all) struct HarResponse {
 } derive(Eq, Debug, ToJson)
 
 ///|
+pub fn HarResponse::body_bytes(self : HarResponse) -> Bytes raise HarError {
+  match self.encoding {
+    None => @utf8.encode(self.body)
+    Some(encoding) if encoding.to_lower() == "base64" =>
+      @base64.decode(self.body) catch {
+        _ => raise InvalidHar("response content contains malformed base64")
+      }
+    Some(encoding) =>
+      raise InvalidHar("unsupported response content encoding: \{encoding}")
+  }
+}
+
+///|
 pub(all) struct HarEntry {
   request : HarRequest
   response : HarResponse

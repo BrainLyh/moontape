@@ -99,7 +99,7 @@ async fn serve_archive(
           reason_phrase(recorded.status, recorded.status_text),
           extra_headers=headers,
         )
-        ..write(recorded.body)
+        ..write(recorded.body_bytes())
         .end_response()
       }
       mismatch => {

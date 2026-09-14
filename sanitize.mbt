@@ -56,6 +56,10 @@ fn sanitize_value(
         Some(String(mime_type)) => mime_type.to_lower().contains("json")
         _ => false
       }
+      let text_is_base64 = match members.get("encoding") {
+        Some(String(encoding)) => encoding.to_lower() == "base64"
+        _ => false
+      }
       let result : Map[String, Json] = Map([])
       let findings : Array[RedactionFinding] = []
       for key, child in members {
@@ -71,13 +75,23 @@ fn sanitize_value(
           match child {
             String(text) => {
               let transformed = try {
-                let parsed = @json.parse(text)
+                let decoded = if text_is_base64 {
+                  @base64.decode(text) |> @utf8.decode
+                } else {
+                  text
+                }
+                let parsed = @json.parse(decoded)
                 let (clean, nested_findings) = sanitize_value(
                   parsed,
                   child_path(path, "text<json>"),
                 )
                 findings.push_iter(nested_findings.iter())
-                Json::string(clean.stringify())
+                let clean_text = clean.stringify()
+                if text_is_base64 {
+                  Json::string(@base64.encode(@utf8.encode(clean_text)))
+                } else {
+                  Json::string(clean_text)
+                }
               } catch {
                 _ => child
               }

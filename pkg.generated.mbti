@@ -59,6 +59,7 @@ pub(all) struct HarResponse {
   body : String
   encoding : String?
 } derive(Eq, ToJson, @debug.Debug)
+pub fn HarResponse::body_bytes(Self) -> Bytes raise HarError
 
 pub(all) struct Header {
   name : String
