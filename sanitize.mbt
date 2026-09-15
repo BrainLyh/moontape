@@ -103,12 +103,18 @@ fn sanitize_value(
       for key, child in members {
         if (named_sensitive is Some(_) && key.to_lower() == "value") ||
           is_sensitive_name(key, policy) {
-          result.set(key, Json::string(policy.replacement))
-          let name = match named_sensitive {
-            Some(name) if key.to_lower() == "value" => name
-            _ => key
+          let already_redacted = match child {
+            String(value) => value == policy.replacement
+            _ => false
           }
-          findings.push({ path: child_path(path, key), name, })
+          result.set(key, Json::string(policy.replacement))
+          if !already_redacted {
+            let name = match named_sensitive {
+              Some(name) if key.to_lower() == "value" => name
+              _ => key
+            }
+            findings.push({ path: child_path(path, key), name, })
+          }
         } else if contains_json_text && key == "text" {
           match child {
             String(text) => {

@@ -6,6 +6,9 @@ All notable changes to MoonTape are documented here.
 
 ### Added
 
+- Use `cpypypypy/har-toolkit` as the canonical HAR 1.2 parser and adapt its
+  validated document model into MoonTape's replay index.
+- Treat values already replaced by the active policy as clean during CI checks.
 - Defensive validation for HTTP status codes and authority-only URLs.
 - HAR response content-encoding metadata and Base64 replay.
 - Privacy scan reports containing finding names and JSON paths.

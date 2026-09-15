@@ -1,26 +1,133 @@
 ///|
-let fixture =
-  #|{
-  #|  "log": {
-  #|    "version": "1.2",
-  #|    "creator": { "name": "Chromium" },
-  #|    "entries": [{
-  #|      "time": 12.5,
-  #|      "request": {
-  #|        "method": "POST",
-  #|        "url": "https://api.example.test/v1/orders?trace=1",
-  #|        "headers": [{"name":"Authorization","value":"Bearer secret"}],
-  #|        "postData": {"text":"{\"quantity\":2}"}
-  #|      },
-  #|      "response": {
-  #|        "status": 201,
-  #|        "statusText": "Created",
-  #|        "headers": [{"name":"Content-Type","value":"application/json"}],
-  #|        "content": {"mimeType":"application/json","text":"{\"id\":42,\"access_token\":\"secret\"}"}
-  #|      }
-  #|    }]
-  #|  }
-  #|}
+fn test_har(
+  meth : String,
+  url : String,
+  request_headers : Array[Header],
+  request_body : String?,
+  status : Int,
+  response_headers : Array[Header],
+  mime_type : String,
+  response_body : String,
+  encoding : String?,
+) -> String {
+  let request : Map[String, Json] = Map([
+    ("method", Json::string(meth)),
+    ("url", Json::string(url)),
+    ("httpVersion", Json::string("HTTP/1.1")),
+    ("headers", @json.to_json(request_headers)),
+    ("queryString", Json::array([])),
+    ("cookies", Json::array([])),
+    ("headersSize", Json::number(-1)),
+    ("bodySize", Json::number(-1)),
+  ])
+  match request_body {
+    Some(body) =>
+      request.set(
+        "postData",
+        Json::object(
+          Map([
+            ("mimeType", Json::string("application/json")),
+            ("text", Json::string(body)),
+          ]),
+        ),
+      )
+    None => ()
+  }
+  let content : Map[String, Json] = Map([
+    ("size", Json::number(response_body.length().to_double())),
+    ("mimeType", Json::string(mime_type)),
+    ("text", Json::string(response_body)),
+  ])
+  match encoding {
+    Some(value) => content.set("encoding", Json::string(value))
+    None => ()
+  }
+  Json::object(
+    Map([
+      (
+        "log",
+        Json::object(
+          Map([
+            ("version", Json::string("1.2")),
+            (
+              "creator",
+              Json::object(
+                Map([
+                  ("name", Json::string("Chromium")),
+                  ("version", Json::string("1")),
+                ]),
+              ),
+            ),
+            (
+              "entries",
+              Json::array([
+                Json::object(
+                  Map([
+                    (
+                      "startedDateTime",
+                      Json::string("2026-09-11T00:00:00.000Z"),
+                    ),
+                    ("time", Json::number(12.5)),
+                    ("request", Json::object(request)),
+                    (
+                      "response",
+                      Json::object(
+                        Map([
+                          ("status", Json::number(status.to_double())),
+                          (
+                            "statusText",
+                            Json::string(
+                              if status == 201 {
+                                "Created"
+                              } else {
+                                "OK"
+                              },
+                            ),
+                          ),
+                          ("httpVersion", Json::string("HTTP/1.1")),
+                          ("headers", @json.to_json(response_headers)),
+                          ("cookies", Json::array([])),
+                          ("content", Json::object(content)),
+                          ("redirectURL", Json::string("")),
+                          ("headersSize", Json::number(-1)),
+                          ("bodySize", Json::number(-1)),
+                        ]),
+                      ),
+                    ),
+                    ("cache", Json::object(Map([]))),
+                    (
+                      "timings",
+                      Json::object(
+                        Map([
+                          ("send", Json::number(0)),
+                          ("wait", Json::number(12)),
+                          ("receive", Json::number(0.5)),
+                        ]),
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    ]),
+  ).stringify()
+}
+
+///|
+let fixture : String = test_har(
+  "POST",
+  "https://api.example.test/v1/orders?trace=1",
+  [{ name: "Authorization", value: "Bearer secret", }],
+  Some("{\"quantity\":2}"),
+  201,
+  [{ name: "Content-Type", value: "application/json", }],
+  "application/json",
+  "{\"id\":42,\"access_token\":\"secret\"}",
+  None,
+)
 
 ///|
 test "parse and inspect HAR 1.2" {
@@ -44,15 +151,22 @@ test "sanitize headers and nested JSON keys" {
   assert_true(text.contains("[REDACTED]"))
   assert_false(text.contains("Bearer secret"))
   assert_false(report.is_clean())
+  assert_true(scan_har(parse_har(clean.stringify())).is_clean())
 }
 
 ///|
 test "privacy report identifies a clean archive" {
-  let clean =
-    #|{"log":{"version":"1.2","entries":[{
-    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
-    #|  "response":{"status":200,"headers":[],"content":{"text":"ok"}}
-    #|}]}}
+  let clean = test_har(
+    "GET",
+    "https://example.test",
+    [],
+    None,
+    200,
+    [],
+    "text/plain",
+    "ok",
+    None,
+  )
   assert_true(scan_har(parse_har(clean)).is_clean())
 }
 
@@ -83,11 +197,17 @@ test "URL path handles authority-only query strings" {
 
 ///|
 test "reject invalid HTTP status codes" {
-  let invalid =
-    #|{"log":{"version":"1.2","entries":[{
-    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
-    #|  "response":{"status":99,"headers":[],"content":{}}
-    #|}]}}
+  let invalid = test_har(
+    "GET",
+    "https://example.test",
+    [],
+    None,
+    99,
+    [],
+    "text/plain",
+    "",
+    None,
+  )
   let rejected = try {
     ignore(parse_har(invalid))
     false
@@ -99,29 +219,39 @@ test "reject invalid HTTP status codes" {
 
 ///|
 test "preserve HAR content encoding metadata" {
-  let encoded =
-    #|{"log":{"version":"1.2","entries":[{
-    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
-    #|  "response":{"status":200,"headers":[],"content":{
-    #|    "mimeType":"image/png","text":"AA==","encoding":"base64"
-    #|  }}
-    #|}]}}
+  let encoded = test_har(
+    "GET",
+    "https://example.test",
+    [],
+    None,
+    200,
+    [],
+    "image/png",
+    "AA==",
+    Some("base64"),
+  )
   let archive = parse_har(encoded)
   assert_eq(archive.entries[0].response.encoding, Some("base64"))
 }
 
 ///|
 test "replay response headers through an explicit safety allowlist" {
-  let with_headers =
-    #|{"log":{"version":"1.2","entries":[{
-    #|  "request":{"method":"GET","url":"https://example.test","headers":[]},
-    #|  "response":{"status":200,"headers":[
-    #|    {"name":"Content-Type","value":"application/json; charset=utf-8"},
-    #|    {"name":"Cache-Control","value":"max-age=60"},
-    #|    {"name":"Set-Cookie","value":"session=secret"},
-    #|    {"name":"Content-Encoding","value":"gzip"}
-    #|  ],"content":{"mimeType":"application/json","text":"{}"}}
-    #|}]}}
+  let with_headers = test_har(
+    "GET",
+    "https://example.test",
+    [],
+    None,
+    200,
+    [
+      { name: "Content-Type", value: "application/json; charset=utf-8", },
+      { name: "Cache-Control", value: "max-age=60", },
+      { name: "Set-Cookie", value: "session=secret", },
+      { name: "Content-Encoding", value: "gzip", },
+    ],
+    "application/json",
+    "{}",
+    None,
+  )
   let headers = parse_har(with_headers).entries[0].response.replay_headers()
   assert_eq(headers.length(), 2)
   assert_eq(headers[0].value, "application/json; charset=utf-8")
@@ -170,15 +300,17 @@ test "JSON bodies match semantically" {
 
 ///|
 test "decode and sanitize base64 JSON responses" {
-  let encoded =
-    #|{"log":{"version":"1.2","entries":[{
-    #|  "request":{"method":"GET","url":"https://example.test/data","headers":[]},
-    #|  "response":{"status":200,"headers":[],"content":{
-    #|    "mimeType":"application/json",
-    #|    "text":"eyJ0b2tlbiI6InNlY3JldCJ9",
-    #|    "encoding":"base64"
-    #|  }}
-    #|}]}}
+  let encoded = test_har(
+    "GET",
+    "https://example.test/data",
+    [],
+    None,
+    200,
+    [],
+    "application/json",
+    "eyJ0b2tlbiI6InNlY3JldCJ9",
+    Some("base64"),
+  )
   let archive = parse_har(encoded)
   assert_eq(
     @utf8.decode(archive.entries[0].response.body_bytes()),
@@ -195,14 +327,20 @@ test "decode and sanitize base64 JSON responses" {
 
 ///|
 test "custom redaction policy extends safe defaults" {
-  let custom =
-    #|{"log":{"version":"1.2","entries":[{
-    #|  "request":{"method":"GET","url":"https://example.test","headers":[
-    #|    {"name":"X-Tenant-Session","value":"private"},
-    #|    {"name":"Authorization","value":"Bearer private"}
-    #|  ]},
-    #|  "response":{"status":200,"headers":[],"content":{}}
-    #|}]}}
+  let custom = test_har(
+    "GET",
+    "https://example.test",
+    [
+      { name: "X-Tenant-Session", value: "private", },
+      { name: "Authorization", value: "Bearer private", },
+    ],
+    None,
+    200,
+    [],
+    "text/plain",
+    "",
+    None,
+  )
   let policy = RedactionPolicy::default()
     .with_additional(["X-Tenant-Session"])
     .with_replacement("<hidden>")

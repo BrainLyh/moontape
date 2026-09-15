@@ -12,8 +12,9 @@ keywords = [ "har", "http", "mock", "testing", "privacy" ]
 
 preferred_target = "native"
 
-description = "Privacy-first HAR inspection, sanitization, and replay toolkit"
+description = "HAR replay and API testing runtime built on har-toolkit"
 
 import {
   "moonbitlang/async@0.21.3",
+  "cpypypypy/har-toolkit@0.1.0",
 }

@@ -1,17 +1,34 @@
 # MoonTape
 
-MoonTape is a privacy-first toolkit for inspecting, sanitizing, and replaying
-[HTTP Archive (HAR 1.2)](https://w3c.github.io/web-performance/specs/HAR/Overview.html)
-files. Its core and CLI are written in MoonBit.
+MoonTape is a HAR replay and API-test runner for inspecting, sanitizing, and
+replaying [HTTP Archive (HAR 1.2)](https://w3c.github.io/web-performance/specs/HAR/Overview.html)
+files. It is written in MoonBit and built on
+[cpypypypy/har-toolkit](https://mooncakes.io/docs/cpypypypy/har-toolkit).
 
 It turns browser network captures into safe, deterministic API fixtures that
 can be reviewed, committed, and replayed without reaching the original service.
+
+## Relationship with har-toolkit
+
+MoonTape extends the existing MoonBit HAR ecosystem instead of maintaining a
+second general-purpose HAR parser. `cpypypypy/har-toolkit` owns typed HAR 1.2
+parsing, field-path diagnostics, validation, analysis, generic redaction, and
+serialization. Its documented 0.1.0 boundary deliberately excludes filesystem
+I/O and HTTP replay.
+
+MoonTape consumes that library and adds the runtime layer: loading files,
+projecting a validated document into a replay index, request matching and miss
+diagnostics, a native HTTP server, replay-safe response headers, and CI-oriented
+commands. MoonTape's selective JSON/body privacy pass is specific to producing
+reviewable replay fixtures; it complements rather than replaces the upstream
+library's structural redaction API.
 
 ## Status
 
 MoonTape is an early, runnable MVP. It currently supports:
 
-- defensive parsing of the HAR fields needed for replay;
+- HAR 1.2 parsing and field-path diagnostics through `har-toolkit`;
+- projection from the upstream document model into a replay-specific index;
 - listing recorded method, URL, status, and timing information;
 - redacting sensitive headers, cookies, and JSON properties;
 - producing machine-readable findings with the exact location of each value;
@@ -113,15 +130,16 @@ recorded wire encoding, and replay should not restore captured sessions.
 
 ## Architecture
 
-The root package is a pure, portable core:
+The root package is a pure, portable replay layer:
 
-- har.mbt: defensive HAR parsing and inspection
+- har.mbt: `har-toolkit` adapter, replay projection, and inspection
 - sanitize.mbt: recursive privacy transformations
 - matching.mbt: deterministic matching and mismatch diagnostics
 
+`cpypypypy/har-toolkit` remains the source of truth for the HAR document model.
 cmd/main owns native filesystem and HTTP concerns. Keeping I/O out of the core
-makes parsing, sanitization, and matching fast to test and suitable for a future
-Wasm browser interface.
+makes sanitization and matching fast to test and suitable for a future Wasm
+browser interface.
 
 ## Development
 
