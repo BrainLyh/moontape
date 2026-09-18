@@ -29,5 +29,7 @@ All notable changes to MoonTape are documented here.
 ### Verified
 
 - Native formatting and type checking.
-- Twelve unit tests covering parsing, sanitization, matching, headers, and Base64 content.
+- Seventeen unit tests covering parsing, sanitization, matching, planning,
+  runtime coverage, headers, and Base64 content.
 - Inspect, scan, sanitize, and local replay smoke tests.
+- Reproducible production-source audit enforced by CI.

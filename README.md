@@ -43,6 +43,7 @@ MoonTape is an early, runnable MVP. It currently supports:
   through an explicit safety allowlist.
 - compiling recordings into a replay plan that exposes routes, body variants,
   status variants, malformed bodies, and ambiguous duplicate recordings.
+- tracking runtime hits, misses, per-recording usage, and fixture coverage.
 
 HTTPS interception, compressed bodies, request header matching, persistent
 configuration files, and traffic recording are not implemented yet.
@@ -160,6 +161,8 @@ The root package is a pure, portable replay layer:
 - har.mbt: `har-toolkit` adapter, replay projection, and inspection
 - sanitize.mbt: recursive privacy transformations
 - matching.mbt: deterministic matching and mismatch diagnostics
+- plan.mbt: route compilation and preflight ambiguity checks
+- ledger.mbt: runtime observations and recording coverage reports
 
 `cpypypypy/har-toolkit` remains the source of truth for the HAR document model.
 cmd/main owns native filesystem and HTTP concerns. Keeping I/O out of the core
@@ -169,8 +172,9 @@ browser interface.
 ## Development
 
     moon fmt
-    moon check --target native
+    moon check --target native --deny-warn
     moon test --target native
+    pwsh ./scripts/source-audit.ps1
 
 Keep fixtures synthetic: never commit real access tokens, session cookies, or
 personal data.
@@ -178,9 +182,9 @@ personal data.
 ## Roadmap
 
 - persistent JSON policy files with custom replacements and ignored paths;
-- request Header matching and dynamic field exclusion;
+- request Header matching and JSON-path field exclusion;
 - gzip and deflate response bodies;
-- JUnit and JSON verification reports for CI;
+- JUnit export and CLI verification thresholds for CI;
 - a Wasm browser interface for local-only inspection and sanitization;
 - optional fault and latency injection.
 

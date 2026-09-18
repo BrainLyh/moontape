@@ -21,7 +21,11 @@ jobs:
         run: moon fmt --check
 
       - name: Type-check
-        run: moon check --target native
+        run: moon check --target native --deny-warn
+
+      - name: Audit production MoonBit source
+        shell: pwsh
+        run: ./scripts/source-audit.ps1
 
       - name: Test
         run: moon test --target native
