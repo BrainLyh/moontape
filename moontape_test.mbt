@@ -369,3 +369,47 @@ test "custom redaction policy extends safe defaults" {
   assert_false(clean.stringify().contains("private"))
   assert_true(clean.stringify().contains("<hidden>"))
 }
+
+///|
+test "replay plan detects ambiguous duplicate recordings" {
+  let archive = parse_har(fixture)
+  let duplicate : HarArchive = {
+    ..archive,
+    entries: [archive.entries[0], archive.entries[0]],
+  }
+  let plan = build_replay_plan(duplicate, MatchOptions::strict())
+  assert_eq(plan.recording_count, 2)
+  assert_eq(plan.route_count, 1)
+  assert_eq(plan.duplicate_route_count, 1)
+  assert_eq(plan.routes[0].request_variants, 1)
+  assert_eq(plan.routes[0].ambiguous_variants, 1)
+  assert_eq(plan.error_count(), 1)
+  assert_false(plan.is_replayable())
+  assert_true(replay_plan_text(plan).contains("ambiguous_recording"))
+}
+
+///|
+test "replay plan accepts distinct body variants" {
+  let first = parse_har(fixture)
+  let second = parse_har(
+    test_har(
+      "POST",
+      "https://api.example.test/v1/orders?trace=1",
+      [],
+      Some("{\"quantity\":3}"),
+      202,
+      [],
+      "application/json",
+      "{}",
+      None,
+    ),
+  )
+  let archive : HarArchive = {
+    ..first,
+    entries: [first.entries[0], second.entries[0]],
+  }
+  let plan = build_replay_plan(archive, MatchOptions::strict())
+  assert_true(plan.is_replayable())
+  assert_eq(plan.routes[0].request_variants, 2)
+  assert_eq(plan.routes[0].statuses, [201, 202])
+}

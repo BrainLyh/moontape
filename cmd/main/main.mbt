@@ -8,6 +8,7 @@ fn usage() -> String {
     #|  moontape scan <file.har> [--redact name,name]
     #|  moontape check <file.har> [--redact name,name]
     #|  moontape sanitize <input.har> -o <output.har> [--redact name,name]
+    #|  moontape plan <file.har> [--strict] [--json]
     #|  moontape serve <file.har> [--port 8080] [--strict]
     #|  moontape serve <file.har> --strict --ignore-query name,name
     #|  moontape help
@@ -194,6 +195,34 @@ async fn run(args : Array[String]) -> Unit {
       println(
         "Wrote \{output}; redacted \{report.redacted_values} sensitive values.",
       )
+    }
+    [_, "plan", path] => {
+      let plan = @moontape.build_replay_plan(
+        read_archive(path),
+        @moontape.MatchOptions::loose(),
+      )
+      println(@moontape.replay_plan_text(plan))
+    }
+    [_, "plan", path, "--strict"] => {
+      let plan = @moontape.build_replay_plan(
+        read_archive(path),
+        @moontape.MatchOptions::strict(),
+      )
+      println(@moontape.replay_plan_text(plan))
+    }
+    [_, "plan", path, "--json"] => {
+      let plan = @moontape.build_replay_plan(
+        read_archive(path),
+        @moontape.MatchOptions::loose(),
+      )
+      println(@json.to_json(plan).stringify(indent=2))
+    }
+    [_, "plan", path, "--strict", "--json"] => {
+      let plan = @moontape.build_replay_plan(
+        read_archive(path),
+        @moontape.MatchOptions::strict(),
+      )
+      println(@json.to_json(plan).stringify(indent=2))
     }
     [_, "serve", path] =>
       serve_archive(read_archive(path), 8080, @moontape.MatchOptions::loose())

@@ -20,6 +20,8 @@ All notable changes to MoonTape are documented here.
 - Query, method, body, and path mismatch diagnostics.
 - Safe replay of cache, redirect, language, validator, and CORS headers.
 - Strict matching with an allowlist of volatile query parameter names to ignore.
+- Replay-plan inspection with route grouping, response variants, body checks,
+  and ambiguous recording diagnostics.
 
 ### Verified
 

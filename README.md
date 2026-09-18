@@ -41,6 +41,8 @@ MoonTape is an early, runnable MVP. It currently supports:
 - replaying text and base64-encoded responses from a native local HTTP server.
 - replaying cache, redirect, language, CORS, and validator response headers
   through an explicit safety allowlist.
+- compiling recordings into a replay plan that exposes routes, body variants,
+  status variants, malformed bodies, and ambiguous duplicate recordings.
 
 HTTPS interception, compressed bodies, request header matching, persistent
 configuration files, and traffic recording are not implemented yet.
@@ -111,6 +113,11 @@ detection can reduce risk but cannot prove that arbitrary captures are safe.
 ### Replay
 
     moon run cmd/main --target native -- serve capture.safe.har --port 8080
+
+Inspect the replay plan before starting the server:
+
+    moon run cmd/main --target native -- plan capture.safe.har --strict
+    moon run cmd/main --target native -- plan capture.safe.har --strict --json
 
 Enable canonical query comparison:
 
