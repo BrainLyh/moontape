@@ -12,27 +12,63 @@ pub(all) struct MatchOptions {
   compare_query : Bool
   compare_body : Bool
   semantic_json_body : Bool
+  ignored_query_names : Array[String]
 } derive(Eq, Debug, ToJson)
 
 ///|
 pub fn MatchOptions::loose() -> MatchOptions {
-  { compare_query: false, compare_body: true, semantic_json_body: true, }
+  {
+    compare_query: false,
+    compare_body: true,
+    semantic_json_body: true,
+    ignored_query_names: [],
+  }
 }
 
 ///|
 pub fn MatchOptions::strict() -> MatchOptions {
-  { compare_query: true, compare_body: true, semantic_json_body: true, }
+  {
+    compare_query: true,
+    compare_body: true,
+    semantic_json_body: true,
+    ignored_query_names: [],
+  }
 }
 
 ///|
-fn canonical_target(path : String, compare_query : Bool) -> String {
-  guard compare_query else { return path_without_query(path) }
+pub fn MatchOptions::with_ignored_query(
+  self : MatchOptions,
+  names : Array[String],
+) -> MatchOptions {
+  let ignored = self.ignored_query_names.copy()
+  for name in names {
+    let normalized = name.trim().to_owned().to_lower()
+    if normalized != "" && !ignored.contains(normalized) {
+      ignored.push(normalized)
+    }
+  }
+  { ..self, ignored_query_names: ignored, }
+}
+
+///|
+fn query_part_name(part : StringView) -> String {
+  match part.split_once("=") {
+    Some((name, _)) => name.to_owned().to_lower()
+    None => part.to_owned().to_lower()
+  }
+}
+
+///|
+pub fn canonical_target(path : String, options : MatchOptions) -> String {
+  guard options.compare_query else { return path_without_query(path) }
   match path.split_once("?") {
     None => path
     Some((base, query)) => {
       let parts : Array[String] = []
       for part in query.split("&") {
-        parts.push(part.to_owned())
+        if !options.ignored_query_names.contains(query_part_name(part)) {
+          parts.push(part.to_owned())
+        }
       }
       parts.sort()
       if parts.is_empty() {
@@ -67,7 +103,7 @@ pub fn match_request_with_options(
   body? : String,
   options : MatchOptions,
 ) -> MatchResult {
-  let target = canonical_target(path, options.compare_query)
+  let target = canonical_target(path, options)
   let base_path = path_without_query(path)
   let mut same_base_path : Int? = None
   let mut same_target : Int? = None
@@ -77,7 +113,7 @@ pub fn match_request_with_options(
       if same_base_path is None {
         same_base_path = Some(index)
       }
-      if canonical_target(entry.request.path, options.compare_query) == target {
+      if canonical_target(entry.request.path, options) == target {
         if same_target is None {
           same_target = Some(index)
         }

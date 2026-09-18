@@ -19,6 +19,7 @@ All notable changes to MoonTape are documented here.
 - Strict canonical-query matching and semantic JSON body comparison.
 - Query, method, body, and path mismatch diagnostics.
 - Safe replay of cache, redirect, language, validator, and CORS headers.
+- Strict matching with an allowlist of volatile query parameter names to ignore.
 
 ### Verified
 

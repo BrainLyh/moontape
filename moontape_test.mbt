@@ -284,6 +284,26 @@ test "strict matching compares canonical query strings" {
 }
 
 ///|
+test "strict matching can ignore named dynamic query parameters" {
+  let archive = parse_har(fixture)
+  let options = MatchOptions::strict().with_ignored_query(["trace", "nonce"])
+  assert_true(
+    match_request_with_options(
+      archive,
+      "POST",
+      "/v1/orders?trace=other",
+      body="{\"quantity\":2}",
+      options,
+    ) ==
+    Exact(0),
+  )
+  assert_eq(
+    canonical_target("/v1/orders?b=2&trace=x&a=1", options),
+    "/v1/orders?a=1&b=2",
+  )
+}
+
+///|
 test "JSON bodies match semantically" {
   let archive = parse_har(fixture)
   assert_true(

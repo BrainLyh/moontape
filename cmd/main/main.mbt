@@ -9,6 +9,7 @@ fn usage() -> String {
     #|  moontape check <file.har> [--redact name,name]
     #|  moontape sanitize <input.har> -o <output.har> [--redact name,name]
     #|  moontape serve <file.har> [--port 8080] [--strict]
+    #|  moontape serve <file.har> --strict --ignore-query name,name
     #|  moontape help
   )
 }
@@ -26,6 +27,11 @@ fn extra_redaction_policy(names : String) -> @moontape.RedactionPolicy {
     additional.push(name.trim().to_owned())
   }
   @moontape.RedactionPolicy::default().with_additional(additional)
+}
+
+///|
+fn comma_names(names : String) -> Array[String] {
+  names.split(",").map(name => name.trim().to_owned()).collect()
 }
 
 ///|
@@ -193,6 +199,12 @@ async fn run(args : Array[String]) -> Unit {
       serve_archive(read_archive(path), 8080, @moontape.MatchOptions::loose())
     [_, "serve", path, "--strict"] =>
       serve_archive(read_archive(path), 8080, @moontape.MatchOptions::strict())
+    [_, "serve", path, "--strict", "--ignore-query", names] =>
+      serve_archive(
+        read_archive(path),
+        8080,
+        @moontape.MatchOptions::strict().with_ignored_query(comma_names(names)),
+      )
     [_, "serve", path, "--port", port_text] => {
       let port = @string.parse_int(port_text) catch {
         _ => raise Failure("port must be an integer")

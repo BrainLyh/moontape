@@ -116,6 +116,10 @@ Enable canonical query comparison:
 
     moon run cmd/main --target native -- serve capture.safe.har --port 8080 --strict
 
+Ignore volatile query parameters while keeping strict comparison for the rest:
+
+    moon run cmd/main --target native -- serve capture.safe.har --strict --ignore-query timestamp,nonce
+
 Successful responses include X-MoonTape-Match with the one-based recording
 number. A miss returns HTTP 404 and explains whether the nearest recording had
 a different path, query, method, or body. JSON bodies are compared
