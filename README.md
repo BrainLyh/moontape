@@ -139,6 +139,20 @@ Content-Length, Content-Encoding, and Set-Cookie are deliberately omitted:
 MoonTape computes framing itself, decoded HAR bodies may no longer have the
 recorded wire encoding, and replay should not restore captured sessions.
 
+Every replay server exposes local control endpoints that are never matched
+against the HAR:
+
+- `GET /__moontape/report` returns JSON hit, miss, and recording coverage data;
+- `GET /__moontape/report.txt` returns the same report for humans;
+- `POST /__moontape/reset` clears observations between test cases.
+
+The report distinguishes request count from recording coverage: repeatedly
+hitting one route does not hide unused fixtures. CI adapters can fail on any
+miss, incomplete recording coverage, or both.
+
+The server binds to `127.0.0.1` by default so captured responses are not
+exposed to other hosts on the local network.
+
 ## Architecture
 
 The root package is a pure, portable replay layer:

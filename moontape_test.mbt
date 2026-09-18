@@ -413,3 +413,34 @@ test "replay plan accepts distinct body variants" {
   assert_eq(plan.routes[0].request_variants, 2)
   assert_eq(plan.routes[0].statuses, [201, 202])
 }
+
+///|
+test "replay ledger reports misses and recording coverage" {
+  let ledger = ReplayLedger::new(3)
+  ledger.record("GET", "/one", Exact(0), "matched recording #1")
+  ledger.record("GET", "/one", Exact(0), "matched recording #1")
+  ledger.record("POST", "/two", BodyMismatch(1), "body differs")
+  ledger.record("GET", "/missing", PathMismatch, "no path")
+  let report = ledger.report()
+  assert_eq(report.total_requests, 4)
+  assert_eq(report.matched_requests, 2)
+  assert_eq(report.missed_requests, 2)
+  assert_eq(report.unique_recordings_used, 1)
+  assert_eq(report.unused_recordings, [2, 3])
+  assert_eq(report.usage, [{ recording: 1, hits: 2, }])
+  assert_false(report.passes())
+  assert_false(report.passes(require_full_coverage=true, allow_misses=true))
+  assert_true(replay_report_text(report).contains("body differs"))
+  assert_true(@json.to_json(report).stringify().contains("coverage_percent"))
+}
+
+///|
+test "replay ledger can be reset between test cases" {
+  let ledger = ReplayLedger::new(1)
+  ledger.record("GET", "/one", Exact(0), "matched")
+  assert_eq(ledger.request_count(), 1)
+  assert_true(ledger.report().has_full_coverage())
+  ledger.clear()
+  assert_eq(ledger.request_count(), 0)
+  assert_false(ledger.report().has_full_coverage())
+}

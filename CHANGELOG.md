@@ -22,6 +22,9 @@ All notable changes to MoonTape are documented here.
 - Strict matching with an allowlist of volatile query parameter names to ignore.
 - Replay-plan inspection with route grouping, response variants, body checks,
   and ambiguous recording diagnostics.
+- Runtime replay ledger with hit/miss events, per-recording usage, coverage,
+  machine-readable reports, and a reset endpoint for isolated test cases.
+- Loopback-only server binding to avoid exposing recorded responses to the LAN.
 
 ### Verified
 

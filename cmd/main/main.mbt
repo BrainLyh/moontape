@@ -82,12 +82,45 @@ async fn serve_archive(
   port : Int,
   options : @moontape.MatchOptions,
 ) -> Unit {
-  let address = @socket.Addr::parse("0.0.0.0:\{port}")
+  let address = @socket.Addr::parse("127.0.0.1:\{port}")
   let server = @http.Server(address)
+  let ledger = @moontape.ReplayLedger::new(archive.entries.length())
   println(
     "MoonTape replaying \{archive.entries.length()} requests at http://127.0.0.1:\{port}",
   )
   server.run_forever() <| ((request, body_reader, connection) => {
+    let method_name = request_method_name(request.meth)
+    let control_path = @moontape.path_without_query(request.path)
+    if method_name == "GET" && control_path == "/__moontape/report" {
+      let report = ledger.report()
+      connection
+      ..send_response(200, "OK", extra_headers={
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      })
+      ..write(@json.to_json(report).stringify(indent=2) + "\n")
+      .end_response()
+      return
+    }
+    if method_name == "GET" && control_path == "/__moontape/report.txt" {
+      connection
+      ..send_response(200, "OK", extra_headers={
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      })
+      ..write(@moontape.replay_report_text(ledger.report()))
+      .end_response()
+      return
+    }
+    if method_name == "POST" && control_path == "/__moontape/reset" {
+      ledger.clear()
+      connection
+      ..send_response(204, "No Content", extra_headers={
+        "Cache-Control": "no-store",
+      })
+      .end_response()
+      return
+    }
     let body = if request.meth is (Post | Put | Patch) {
       Some(@io.Reader::read_all(body_reader).text())
     } else {
@@ -95,11 +128,13 @@ async fn serve_archive(
     }
     let result = @moontape.match_request_with_options(
       archive,
-      request_method_name(request.meth),
+      method_name,
       request.path,
       body?,
       options,
     )
+    let explanation = @moontape.explain_match(archive, result)
+    ledger.record(method_name, request.path, result, explanation)
     match result {
       Exact(index) => {
         let recorded = archive.entries[index].response
@@ -120,8 +155,7 @@ async fn serve_archive(
         ..write(recorded.body_bytes())
         .end_response()
       }
-      mismatch => {
-        let explanation = @moontape.explain_match(archive, mismatch)
+      _ =>
         connection
         ..send_response(404, "No Recording", extra_headers={
           "Content-Type": "text/plain; charset=utf-8",
@@ -129,7 +163,6 @@ async fn serve_archive(
         })
         ..write("MoonTape: \{explanation}\n")
         .end_response()
-      }
     }
   })
 }
